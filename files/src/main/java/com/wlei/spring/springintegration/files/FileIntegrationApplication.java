@@ -129,6 +129,6 @@ public class FileIntegrationApplication {
     }
     @Bean
     MessageChannel asciiProcessor() {
-        return MessageChannels.p().get();
+        return MessageChannels.publishSubscribe().get();
     }
 }
