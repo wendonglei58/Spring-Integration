@@ -45,90 +45,90 @@ public class FileIntegrationApplication {
     public static void main(String[] args) {
         SpringApplication.run(FileIntegrationApplication.class);
     }
-    @Configuration
-    public static class FtpConfig {
-        @Bean
-        SessionFactory<FTPFile> ftpFileSessionFactory(@Value("${ftp.host}") String host, @Value("${ftp.user}") String user,
-                                                      @Value("${ftp.port}") int port, @Value("${ftp.pass}") String pw) {
-            DefaultFtpSessionFactory sessionFactory = new DefaultFtpSessionFactory();
-            sessionFactory.setHost(host);
-            sessionFactory.setPort(port);
-            sessionFactory.setUsername(user);
-            sessionFactory.setPassword(pw);
-            return sessionFactory;
-        }
-    }
-    @Configuration
-    public static class AmqpConfig {
-        @Bean
-        Exchange exchange() {
-            return ExchangeBuilder.directExchange("ascii").durable(true).build();
-        }
-        @Bean
-        Queue queue() {
-            return QueueBuilder.durable("ascii").build();
-        }
-        @Bean
-        Binding binding() {
-            return BindingBuilder
-                    .bind(this.queue())
-                    .to(this.exchange())
-                    .with("ascii").noargs();
-        }
-
-    }
-
-    @Bean
-    IntegrationFlow files(@Value("${input-directory:${user.home}/Documents/in}") File in,
-                          Environment env) {
-        GenericTransformer<File, Message<String>> fileStringGenericTransformer = (File file) -> {
-            try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                 PrintStream printStream = new PrintStream(bos)) {
-                ImageBanner imageBanner = new ImageBanner(new FileSystemResource(file));
-                imageBanner.printBanner(env, getClass(), printStream);
-                return MessageBuilder
-                        .withPayload(new String(bos.toByteArray()))
-                        .setHeader(FileHeaders.FILENAME, file.getAbsoluteFile().getName())
-                        .build();
-            }catch (IOException ex) {
-                ReflectionUtils.rethrowRuntimeException(ex);
-            }
-            return null;
-        };
+//    @Configuration
+//    public static class FtpConfig {
+//        @Bean
+//        SessionFactory<FTPFile> ftpFileSessionFactory(@Value("${ftp.host}") String host, @Value("${ftp.user}") String user,
+//                                                      @Value("${ftp.port}") int port, @Value("${ftp.pass}") String pw) {
+//            DefaultFtpSessionFactory sessionFactory = new DefaultFtpSessionFactory();
+//            sessionFactory.setHost(host);
+//            sessionFactory.setPort(port);
+//            sessionFactory.setUsername(user);
+//            sessionFactory.setPassword(pw);
+//            return sessionFactory;
+//        }
+//    }
+//    @Configuration
+//    public static class AmqpConfig {
+//        @Bean
+//        Exchange exchange() {
+//            return ExchangeBuilder.directExchange("ascii").durable(true).build();
+//        }
+//        @Bean
+//        Queue queue() {
+//            return QueueBuilder.durable("ascii").build();
+//        }
+//        @Bean
+//        Binding binding() {
+//            return BindingBuilder
+//                    .bind(this.queue())
+//                    .to(this.exchange())
+//                    .with("ascii").noargs();
+//        }
+//
+//    }
+//
+//    @Bean
+//    IntegrationFlow files(@Value("${input-directory:${user.home}/Documents/in}") File in,
+//                          Environment env) {
+//        GenericTransformer<File, Message<String>> fileStringGenericTransformer = (File file) -> {
+//            try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
+//                 PrintStream printStream = new PrintStream(bos)) {
+//                ImageBanner imageBanner = new ImageBanner(new FileSystemResource(file));
+//                imageBanner.printBanner(env, getClass(), printStream);
+//                return MessageBuilder
+//                        .withPayload(new String(bos.toByteArray()))
+//                        .setHeader(FileHeaders.FILENAME, file.getAbsoluteFile().getName())
+//                        .build();
+//            }catch (IOException ex) {
+//                ReflectionUtils.rethrowRuntimeException(ex);
+//            }
+//            return null;
+//        };
+////        return IntegrationFlows.from(Files.inboundAdapter(in)
+////                .autoCreateDirectory(true)
+////                .preventDuplicates(true).patternFilter("*.jpg"),
+////                poller -> poller.poller(pm -> pm.fixedRate(1000)))
+////                .transform(File.class, fileStringGenericTransformer)
+////                .handle(Ftp.outboundAdapter(ftpSessionFactory).fileNameGenerator(message -> {
+////                    String fileName = (String) message.getHeaders().get(FileHeaders.FILENAME);
+////                    return fileName.split("\\.")[0] + ".txt";
+////                }).remoteDirectory("/upload"))
+////                .get();
 //        return IntegrationFlows.from(Files.inboundAdapter(in)
 //                .autoCreateDirectory(true)
-//                .preventDuplicates(true).patternFilter("*.jpg"),
-//                poller -> poller.poller(pm -> pm.fixedRate(1000)))
-//                .transform(File.class, fileStringGenericTransformer)
-//                .handle(Ftp.outboundAdapter(ftpSessionFactory).fileNameGenerator(message -> {
-//                    String fileName = (String) message.getHeaders().get(FileHeaders.FILENAME);
-//                    return fileName.split("\\.")[0] + ".txt";
-//                }).remoteDirectory("/upload"))
+//                .preventDuplicates(true)
+//                .patternFilter("*.jpg"), poller -> poller.poller(pm -> pm.fixedRate(1000)))
+//                .transform(fileStringGenericTransformer)
+//                .channel(asciiProcessor()).get();
+//
+//    }
+//    @Bean
+//    IntegrationFlow ftp(SessionFactory<FTPFile> ftpSessionFactory) {
+//        return IntegrationFlows.from(asciiProcessor())
+//                .handle(Ftp.outboundAdapter(ftpSessionFactory)
+//                        .fileNameGenerator(message -> message.getHeaders().get(FileHeaders.FILENAME).toString().split("\\.")[0] + ".txt")
+//                        .remoteDirectory("/upload"))
 //                .get();
-        return IntegrationFlows.from(Files.inboundAdapter(in)
-                .autoCreateDirectory(true)
-                .preventDuplicates(true)
-                .patternFilter("*.jpg"), poller -> poller.poller(pm -> pm.fixedRate(1000)))
-                .transform(fileStringGenericTransformer)
-                .channel(asciiProcessor()).get();
-
-    }
-    @Bean
-    IntegrationFlow ftp(SessionFactory<FTPFile> ftpSessionFactory) {
-        return IntegrationFlows.from(asciiProcessor())
-                .handle(Ftp.outboundAdapter(ftpSessionFactory)
-                        .fileNameGenerator(message -> message.getHeaders().get(FileHeaders.FILENAME).toString().split("\\.")[0] + ".txt")
-                        .remoteDirectory("/upload"))
-                .get();
-    }
-    @Bean
-    IntegrationFlow amqp(AmqpTemplate amqpTemplate) {
-        return IntegrationFlows.from(this.asciiProcessor())
-                .handle(Amqp.outboundAdapter(amqpTemplate).exchangeName("ascii").routingKey("ascii"))
-                .get();
-    }
-    @Bean
-    MessageChannel asciiProcessor() {
-        return MessageChannels.publishSubscribe().get();
-    }
+//    }
+//    @Bean
+//    IntegrationFlow amqp(AmqpTemplate amqpTemplate) {
+//        return IntegrationFlows.from(this.asciiProcessor())
+//                .handle(Amqp.outboundAdapter(amqpTemplate).exchangeName("ascii").routingKey("ascii"))
+//                .get();
+//    }
+//    @Bean
+//    MessageChannel asciiProcessor() {
+//        return MessageChannels.publishSubscribe().get();
+//    }
 }
